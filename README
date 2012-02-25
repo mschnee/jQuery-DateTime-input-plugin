@@ -1,0 +1,29 @@
+jQuery.timeInput.js
+
+Because I am sick and tired of the nasty messes of combinations of select boxes and crazy calendars, here is a smart and useable plugin for manipulating an InputText HTML field that has been purposed to handle a time, date, or a date and time.
+
+This plugin is currently under development.  It's not done.  I'll update this README once it is.
+
+== USAGE ==
+$("input#yourTextInput").timeInput({format:"Legal strftime format"});
+
+Any value that can be passed to JavaScript's Date(stringFormat) constructor will work, including UTC timestamps.  If there's an invalid value in the field, the current time will be used.
+
+== ACTUALLY USING THE INPUT FIELD ==
+You will be setting times and dates with the keyboard.  The simplest way to do it is to use the arrow keys.  Pressing "Up" will increment the current part of the date.  Pressing "down" will decrement the current part of the date.  Pressing "right" will advance to the next part of the date, and pressing "left" will go back one part.
+
+So if you have a date of "2/22/2012 11:59:59 PM", and the "59" seconds is selected, and you press "Up", the date will advance to "2/23/2012 12:00:00 AM".
+
+You can also just type in the values using the keyboard.  The selection will advance naturally to the next segment when you finish the current segment.  If you type in something illegal, like "34" for the date, the "4" you typed will not be applied and the selector will still be waiting for your input for that character.
+
+Pressing tab, space, and enter will advance to the next component just like the "right" arrow key does.
+
+Pressing escape will return to a previous field just like the "left" arrow key does.
+
+Pressing "escape" will reset the entire input to the value it was created with.
+
+Each time you complete a field, the input's onChange() will be invoked.  You might want to bind to blur instead().
+
+Once you finish the last segment, a tab or enter will break the field's focus and you're free to do whatever you want on your webpage.
+
+Of course, you can also click out.
