@@ -574,78 +574,127 @@ Oy
  */
 (function($){
     /* these are essentially static parameters */
-    var token_re=/((?:^%)?%[aAbBcCdDehHIjmMprRSTuUVwWxXyYZ])/g
+    var token_re=/[aAbBCdeHIjmMpSuUVwWyYZ]/
+    var aggregate_re=/[cDFhnrRtTxX]/;
+    
+    // phpjs stuff
+    this.php_js = this.php_js || {};
+    var phpjs = this.php_js;
+    this.setlocale('LC_ALL', 0); // ensure setup of localization variables takes place
+    var _locale = phpjs.localeCategories.LC_TIME;
+    var _locales = phpjs.locales;
+    var _lc_time = _locales[_locale].LC_TIME;
+    var _aggregates = {
+        c: 'locale',
+        D: '%m/%d/%y',
+        F: '%y-%m-%d',
+        h: '%b',
+        n: '\n',
+        r: 'locale',
+        R: '%H:%M',
+        t: '\t',
+        T: '%H:%M:%S',
+        x: 'locale',
+        X: 'locale'
+    };
+            
+    var _current = new Date();
     
     var methods = {
+        
         /** 
          * Initialize each input element.
+         * 
+         * This function takes care of all the setup necessary to convert the
+         * format string into useful tokens and sets up input handling.
          */
         init: function(params) {
             var settings = $.extend({
                 format: "%I:%M %p",         /* the format according to strftime() */
                 defaultIsMidnight: false,   /* use the current time (true) or midnight(false) as a fallback */
-                timeIncrementsDay:true      /* if you roll from 11:59pm to 12:00am, should I increment 2/24/2012 to 2/25/2012 */
             },params);
+            
             return this.each(function(){
                 var Self = $(this),
                     data = Self.data('timeInput');
                 
-                /* initialize if necessary */
+                /*  Only initialize/tokenize each element once.
+                    Also, we don't like invalid dates, so let Date() 
+                    take care of all the dirty work.
+                 */
                 if( ! data ) {
                     Self.data('timeInput',{
                         element: Self,
-                        components: {
-                            day: null,
-                            month: null,
-                            year: null,
-                            second: null,
-                            minute: null,
-                            hour: null,
-                            meridiam: null
-                        },
                         displayFormat: settings.format,
                         tokens: [],
-                        ds: new Date(Self.val())
+                        ds: new Date( Self.val() )
                     });
                     data = Self.data('timeInput');
+                    if(data.ds=="Invalid Date") {
+                        data.ds = settings.defaultIsMidnight?new Date(_current.getFullYear(),_current.getMonth(),_current.getDate(),0,0,0,0):new Date()
+                    }
                     
-                    /* if the date is invalid, fix it */
-                    if( data.ds == "Invalid Date") {
-                        var c = new Date();
-                        if(settings.defaultIsMidnight)
-                            data.ds = new Date(c.getFullYear(),c.getMonth(),c.getDate(),0,0,0,0);
-                        else
-                            data.ds = c;
-                    } 
-                }
-                
-                console.log(data);
-                /*  Figure out what time it is using Self.val() and data.format 
-                    It's perfectly possible to supply an illegal value but putting
-                    in two tokens that refer to the same component in different days.
-                 */
-                
-                var results = token_re.exec(settings.format);
-                
-                var tcount = 0;
-                if(! results)
-                    $.error("Invalid format string: \""+settings.format+"\" The format should match the characters according to strftime() (see http://pubs.opengroup.org/onlinepubs/007908799/xsh/strftime.html).");
-                
-                /* now that we have parseable tokens... */
-                $.each(results,function(index,item){
+                    // tokenization.  First do string replacement according to phpjs.
+                    while (settings.format.match(/%[cDFhnrRtTxX]/)) {
+                        settings.format = settings.format.replace(/%([cDFhnrRtTxX])/g, function (m0, m1) {
+                            var f = _aggregates[m1];
+                            return (f === 'locale' ? _lc_time[m1] : f);
+                        });
+                    }
 
-                });
+                    /**
+                    * The tokens are made up ov objects:
+                    * {
+                    *  r: true/false, // replace.  is this a replacement?
+                    *  v: "value"  // value :the filter used in replacement or the content of separation strings
+                    *  i: true/false // interactive: if r is true, is this a component the user can interact with.
+                    * }
+                    * i is to denote fields that are to be replaced by strftime() but that we don't want the user 
+                    * to input on, so we'll render it, but treat it as a separator.
+                    */
+                    var currentSep = ''; // the current separator
+                    for( var i=0; i<settings.format.length; i++ ) {
+                        if(settings.format[i]=="%") {
+                            if (token_re.test(settings.format[i+1])) {
+                                if(currentSep.length) { data.tokens.push({r:false,v:currentSep}); currentSep=''; }
+                                data.tokens.push({r:true,v:settings.format[i+1],i:true});
+                            } else if (settings.format[i+1]=="%") {
+                                currentSep+=settings.format[i+1];
+                            } else {
+                                currentSep+="%"+settings.format[i+1];
+                            }
+                            
+                            i++;
+                        } else {
+                            currentSep+=settings.format[i];
+                        }
+                        
+                    }
+                    if(currentSep.length) { data.tokens.push({r:false,v:currentSep}); currentSep=''; }
+                } /* </ if( ! data ) >
+                
                 /* bind the elements to keypress */
                 $(window).bind('keypress.timeInput', methods.keypress);
                 
+                /* Update the input element */
                 Self.timeInput("updateDisplay");
             });
         },
+ 
+        /**
+         * Updates the display.  Specifically, it renders the current value into
+         * the HTML element's value attribute.
+         */
         updateDisplay: function() {
             var Self = $(this),
                 data = Self.data('timeInput');
-            Self.val(strftime(data.displayFormat));
+            var oStr ='';
+            $.each(data.tokens,function(index,val){
+                oStr+=(val.r?strftime("%"+val.v,data.ds):val.v);
+            });
+            Self.val(oStr);
         },
+ 
         /**
          * Handle the element's keypress.
          */
