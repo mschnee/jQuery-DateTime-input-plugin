@@ -784,7 +784,99 @@ function strtodate (str, now) {
         x: 'locale',
         X: 'locale'
     };
-            
+           
+    /**
+     * This needs to be called asynchronously, AFTER the input has been handled.
+     */
+    function selectRange(element,start,end) {
+        if(element.setSelectionRange) { // Mozilla
+            element.focus();
+            element.select();
+            element.setSelectionRange(start, end,"none");
+        } else if(document.selection) { // IE (and Opera?)
+            element.focus();
+            element.select();
+            var block = document.selection.createRange();
+            block.collapse(true);
+            block.moveEnd('character', end);
+            block.moveStart('character', start);
+            block.select();
+        } else {
+            // possible fallback
+        }
+    }
+    
+    function selectToken(data,currentToken) {
+        var currentCharIndex = 0;
+        for(var i=0; i<currentToken;i++) {
+            currentCharIndex+=(data.tokens[i].r?strftime("%"+data.tokens[i].v,data.ds):data.tokens[i].v).length
+        }
+        var tokenValue = data.tokens[i].v;
+        var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?strftime("%"+data.tokens[currentToken].v,data.ds):data.tokens[currentToken].v).length;
+        setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
+    }
+    
+    /**
+     * Increments token.
+     */
+    function selectNextToken(Self) {
+        var data = Self.data('timeInput');
+        data.currentToken++;
+        
+        if (data.currentToken >= data.tokens.length ) {
+            data.currentToken = data.tokens.length-1;
+        }else if (data.currentToken <= 0 ) {
+            data.currentToken = 0;
+        }
+
+        for(var i=data.currentToken;i<data.tokens.length;i++) {
+            if( !data.tokens[i].r || !data.tokens[i].i ) {
+                data.currentToken++;
+            } else {
+                break
+            }
+        }
+        
+        selectToken(data,data.currentToken);
+        return false;
+    }
+    
+    /**
+     * Decrement's token.
+     */
+    function selectPrevToken(Self) {
+        var data = Self.data('timeInput');
+        data.currentToken--;
+        if (data.currentToken >= data.tokens.length ) {
+            data.currentToken = data.tokens.length-1;
+        }else if (data.currentToken <= 0 ) {
+            data.currentToken = 0;
+        }
+        
+        // extra processing for decrement since we count up from 0 for lengths.
+        for(var i=data.currentToken; i>=0;i--) {
+            if( !data.tokens[i].r || !data.tokens[i].i ) {
+                data.currentToken--;
+            } else {
+                break;
+            }
+        }
+        selectToken(data,data.currentToken);
+        return false;
+    }
+    
+    function incrementToken(Self) {
+        var data = Self.data('timeInput');
+        
+        selectToken(data,data.currentToken);
+    }
+    
+    function decrementToken(Self) {
+        var data = Self.data('timeInput');
+        
+        selectToken(data,data.currentToken);
+    }
+    
     var _current = new Date();
     
     var methods = {
@@ -811,7 +903,7 @@ function strtodate (str, now) {
                  */
                 if( ! data ) {
                     Self.data('timeInput',{
-                        element: Self,
+                        element: this,
                         displayFormat: settings.format,
                         tokens: [],
                         ds: null
@@ -901,23 +993,27 @@ function strtodate (str, now) {
          * Handle the element's keypress.
          */
         keydown: function(event) {
-            console.log(event);
+        
             var key = {left: 37, up: 38, right: 39, down: 40, tab:9, enter:13, backspace: 8 };
             switch(event.which) {
-                case(key.left): retreat(); break;
-                case(key.right): advance(); break;
-                case(key.up): increment(); break;
-                case(key.down): decrement(); break;
+                case(key.left): return selectPrevToken($(this)); break;
+                case(key.right): return selectNextToken($(this)); break;
+                case(key.up): return incrementToken($(this)); break;
+                case(key.down): return decrementToken($(this)); break;
             }
         },
         focus: function(event) {
-            console.log(event);
+            var Self = $(this),
+                data = Self.data('timeInput');
+            data.currentToken = -1;
+            selectRange(data.element,0,0);
+            selectNextToken(Self);
         },
         blur: function(event) {
-            console.log(event);
+            
         },
         click: function(event) {
-            console.log(event);
+            
         },
         /**
          * Destroy and unbind the events
