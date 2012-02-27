@@ -785,6 +785,48 @@ function strtodate (str, now) {
         X: 'locale'
     };
            
+    var _mfn = {
+        a: _m_day,
+        A: _m_day,
+        d: _m_day,
+        e: _m_day,
+        j: _m_day,
+        u: _m_day,
+        w: _m_day,
+        b: _m_month,
+        B: _m_month,
+        h: _m_month,
+        m: _m_month,
+    }
+    
+    function _m_day(dateObject,inc) {
+        return new Date(dateObject.getTime()+(inc?86400000:-86400000));
+    }
+    
+    function _m_month(dateObject,inc) {
+        var m = dateObject.getMonth()+(inc?1:-1), // 0 to 11
+            ret = new Date(dateObject);
+        if(m<0) {
+            ret.setFullYear(dateObject.getFullYear()-1);
+            m=0
+        } else if (m > 11) {
+            ret.setFullYear(dateObject.getFullYear()+1);
+            m=11;
+        } 
+        ret.setMonth(m);
+        return ret;
+    }
+    
+    function _m_year(dateObject,inc) {
+        var ret = new Date(dateObject);
+        if(inc) {
+            ret.setFullYear(dateObject.getFullYear()+1);
+        } else {
+            ret.setFullYear(dateObject.getFullYear()-1);
+        }
+        return ret;
+    }
+    
     /**
      * This needs to be called asynchronously, AFTER the input has been handled.
      */
@@ -867,13 +909,15 @@ function strtodate (str, now) {
     
     function incrementToken(Self) {
         var data = Self.data('timeInput');
-        
+        data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data.ds,true);
+        Self.timeInput("updateDisplay");
         selectToken(data,data.currentToken);
     }
     
     function decrementToken(Self) {
         var data = Self.data('timeInput');
-        
+        data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data.ds,false);
+        Self.timeInput("updateDisplay");
         selectToken(data,data.currentToken);
     }
     
