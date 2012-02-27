@@ -785,6 +785,9 @@ function strtodate (str, now) {
         X: 'locale'
     };
            
+    /**
+     * This object array references the worker functions for incrementing/decrementing time.
+     */
     var _mfn = {
         a: _m_day,
         A: _m_day,
@@ -797,34 +800,99 @@ function strtodate (str, now) {
         B: _m_month,
         h: _m_month,
         m: _m_month,
+        C: _m_century,
+        g: _m_year,
+        G: _m_year,
+        y: _m_year,
+        Y: _m_year,
+        H: _m_hour,
+        I: _m_hour,
+        l: _m_hour,
+        p: _m_meridian,
+        P: _m_meridian,
+        M: _m_minute,
+        S: _m_second,
+        s: _m_second,
+        z: _m_zone,
+        Z: _m_zone
     }
     
-    function _m_day(dateObject,inc) {
-        return new Date(dateObject.getTime()+(inc?86400000:-86400000));
+    function _m_day(data,inc) {
+        return new Date(data.ds.getTime()+(inc?86400000:-86400000));
     }
     
-    function _m_month(dateObject,inc) {
-        var m = dateObject.getMonth()+(inc?1:-1), // 0 to 11
-            ret = new Date(dateObject);
+    function _m_month(data,inc) {
+        var m = data.ds.getMonth()+(inc?1:-1), // 0 to 11
+            ret = new Date(data.ds);
         if(m<0) {
-            ret.setFullYear(dateObject.getFullYear()-1);
-            m=0
+            ret.setFullYear(data.ds.getFullYear()-1);
+            m=11
         } else if (m > 11) {
-            ret.setFullYear(dateObject.getFullYear()+1);
-            m=11;
+            ret.setFullYear(data.ds.getFullYear()+1);
+            m=0;
         } 
         ret.setMonth(m);
         return ret;
     }
     
-    function _m_year(dateObject,inc) {
-        var ret = new Date(dateObject);
+    function _m_year(data,inc) {
+        var ret = new Date(data.ds);
         if(inc) {
-            ret.setFullYear(dateObject.getFullYear()+1);
+            ret.setFullYear(data.ds.getFullYear()+1);
         } else {
-            ret.setFullYear(dateObject.getFullYear()-1);
+            ret.setFullYear(data.ds.getFullYear()-1);
         }
         return ret;
+    }
+    function _m_century(data,inc) {
+        var ret = new Date(data.ds);
+        if(inc) {
+            ret.setFullYear(data.ds.getFullYear()+100);
+        } else {
+            ret.setFullYear(data.ds.getFullYear()-100);
+        }
+        return ret;
+    }
+    
+    function _m_hour(data,inc) {
+        return new Date(data.ds.getTime()+(inc?3600000:-3600000));
+    }
+    function _m_minute(data,inc) {
+        return new Date(data.ds.getTime()+(inc?60000:-60000));
+    }
+    function _m_second(data,inc) {
+        return new Date(data.ds.getTime()+(inc?1000:-1000));
+    }
+    function _m_meridian(data,inc) {
+        var ret = new Date(data.ds);
+        if(inc) {
+            if(ret.getHours>=12) {
+                if(data.meridianIncrementsDay) {
+                    ret.setHours(ret.getHours()+12);
+                } else {
+                    ret.setHours(ret.getHours()-12);
+                }
+            } else {
+                ret.setHours(ret.getHours()+12);
+            }
+        } else {
+            if(ret.getHours<12) {
+                if(data.meridianIncrementsDay) {
+                    ret.setHours(ret.getHours()-12);
+                } else {
+                    ret.setHours(ret.getHours()+12);
+                }
+            } else {
+                ret.setHours(ret.getHours()-12);
+            }
+        }
+        return ret;
+        
+    }
+    
+    /* currently unimplemented */
+    function _m_zone(data,inc) {
+        return data.ds;
     }
     
     /**
@@ -909,14 +977,14 @@ function strtodate (str, now) {
     
     function incrementToken(Self) {
         var data = Self.data('timeInput');
-        data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data.ds,true);
+        data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data,true);
         Self.timeInput("updateDisplay");
         selectToken(data,data.currentToken);
     }
     
     function decrementToken(Self) {
         var data = Self.data('timeInput');
-        data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data.ds,false);
+        data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data,false);
         Self.timeInput("updateDisplay");
         selectToken(data,data.currentToken);
     }
@@ -935,6 +1003,7 @@ function strtodate (str, now) {
             var settings = $.extend({
                 format: "%m/%d/%y %I:%M %p",         /* the format according to strftime() */
                 defaultIsMidnight: false,   /* use the current time (true) or midnight(false) as a fallback */
+                meridianIncrementsDay: false /* roll 11pm on the 23rd to 11am on the 24th */
             },params);
             
             return this.each(function(){
