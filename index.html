@@ -2,6 +2,11 @@
 <html>
 <head>
 	<title>jQuery.timeInput.js Test Page</title>
+	<style type="text/css">
+	input, #output {
+        font-family: "mono"
+	}
+	</style>
 </head>
 <body>
 <div><label>Blank Input:<input id=t1 type=text class=timeInput /></label></div>
@@ -12,7 +17,7 @@
 <script src="jquery-1.7.1.js"></script>
 <script src="jquery.timeInput.js"></script>
 <script>
-$(".timeInput").timeInput({ format:"%m/%d/%y %I:%M %p"});
+$(".timeInput").timeInput({ format:"%m/%d/%y %I:%M %p "});
 $(".timeInput2").timeInput({ format:"%a %e %b %Y %Z"}).change(function(){
     $("#output").empty().append ($(".timeInput2").timeInput( 'value' ) );
 });

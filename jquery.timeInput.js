@@ -937,14 +937,15 @@ function strtodate (str, now) {
      */
     function selectNextToken(Self) {
         var data = Self.data('timeInput');
-        data.currentToken++;
-        
+        var currentSelection = data.currentToken;
+
+        data.currentToken++;        
         if (data.currentToken >= data.tokens.length ) {
             data.currentToken = data.tokens.length-1;
         }else if (data.currentToken <= 0 ) {
             data.currentToken = 0;
         }
-
+        
         for(var i=data.currentToken;i<data.tokens.length;i++) {
             if( !data.tokens[i].r || !data.tokens[i].i ) {
                 data.currentToken++;
@@ -953,6 +954,8 @@ function strtodate (str, now) {
             }
         }
         
+        if(data.currentToken >= data.tokens.length)
+            data.currentToken = currentSelection;
         selectToken(data,data.currentToken);
         return false;
     }
@@ -1068,48 +1071,59 @@ function strtodate (str, now) {
                     * to input on, so we'll render it, but treat it as a separator.
                     */
                     var currentSep = ''; // the current separator
-                    for( var i=0; i<settings.format.length; i++ ) {
-                        if(settings.format[i]=="%") {
-                            if (token_re.test(settings.format[i+1])) {
-                                if(currentSep.length) { data.tokens.push({r:false,v:currentSep}); currentSep=''; }
-                                data.tokens.push({r:true,v:settings.format[i+1],i:true});
-                            } else if (settings.format[i+1]=="%") {
-                                currentSep+=settings.format[i+1];
-                            } else if(/[zZ]/.test(settings.format[i+1])){
-                                /* 
-                                 * WARNING ABOUT TIME ZONES AND DAYLIGHT SAVINGS TIME
-                                 * 
-                                 * Time zone displays should not be editable or displayable.  Why?  Because JavaScript
-                                 * Date() knows absolutely nothing about Time, Dates, or zones.  This is because it's
-                                 * just a very dumb wrapper around some system implementations.  This means you could say
-                                 * "I want to edit some time for something that's in my current time zone".  Say you want to
-                                 * change somebody dirthday that happens to live in Arizona- Arizona has different DST rules
-                                 * than Colorado despite being, nominally, in the same timezone offset.  What will end up happening
-                                 * is that you can increment past the time you want to set, because the time may exist in Arizona,
-                                 * but it doesn't exist in your locale.
-                                 * 
-                                 * The good news is that this is a rendering problem and not an actualy "time" problem.  Time is 
-                                 * stored, internally, as a timestamp (milliseconds since the Epoch), so your system is going to be
-                                 * the monkey getting things wrong.  Your server implementation should check against the tz database,
-                                 * or have some special handling for zone and DST boundaries.
-                                 * 
-                                 * This is one of the MAJOR deficiencies in JavaScript's Date() implementation.  The other two are
-                                 * the lack of any sapient string formatting (which this plugin addresses), and the inability to
-                                 * do any real modification or comparison between dates (which this plugin kind-of-addresses.
-                                 * 
-                                 * If you want to denote that this input is displaying time adjusted for a specific zone, you can 
-                                 * put it in yourself as an escaped string "%H:%I %P %(DST)"
-                                 */
-                            } else {
-                                currentSep+="%"+settings.format[i+1];
-                            }
-                            
-                            i++;
-                        } else {
-                            currentSep+=settings.format[i];
-                        }
+                    
+                    /* 
+                     * WARNING ABOUT TIME ZONES AND DAYLIGHT SAVINGS TIME
+                     * 
+                     * Time zone displays should not be editable or displayable.  Why?  Because JavaScript
+                     * Date() knows absolutely nothing about Time, Dates, or zones.  This is because it's
+                     * just a very dumb wrapper around some system implementations.  This means you could say
+                     * "I want to edit some time for something that's in my current time zone".  Say you want to
+                     * change somebody dirthday that happens to live in Arizona- Arizona has different DST rules
+                     * than Colorado despite being, nominally, in the same timezone offset.  What will end up happening
+                     * is that you can increment past the time you want to set, because the time may exist in Arizona,
+                     * but it doesn't exist in your locale.
+                     * 
+                     * The good news is that this is a rendering problem and not an actualy "time" problem.  Time is 
+                     * stored, internally, as a timestamp (milliseconds since the Epoch), so your system is going to be
+                     * the monkey getting things wrong.  Your server implementation should check against the tz database,
+                     * or have some special handling for zone and DST boundaries.
+                     * 
+                     * This is one of the MAJOR deficiencies in JavaScript's Date() implementation.  The other two are
+                     * the lack of any sapient string formatting (which this plugin addresses), and the inability to
+                     * do any real modification or comparison between dates (which this plugin kind-of-addresses.
+                     * 
+                     * If you want to denote that this input is displaying time adjusted for a specific zone, you can 
+                     * put it in yourself as an escaped string "%H:%I %P %(DST)"
+                     */
+                    
+                    
+                    
+                    /** TODO: use a regexp that matches everything nicely.
+                     * matches %H tokens (strftime - replace and make interactive)
+                     * matches !H tokens (strftime - replace but DON'T make interactive)
+                     * matches %(something ) (special escape, everything between (...) is printed as is .. unnecessary?
+                     */
+                    var testre = /%([aAbBCdegGHIjklmMpPsSuUVwWyYzZ%])|!([aAbBCdegGHIjklmMpPsSuUVwWyYzZ%])|%\((.*?)\)|(.+?)/g;
+                    $.each(settings.format.match(testre),function(index,pre){
                         
-                    }
+                        // metachar
+                        if(pre.match(/%%|%!/)) {
+                            data.tokens.push({r:false,v:pre[1],i:false});
+                        } else if(pre.match(/%([zZ])/)) {
+                            // do nothing, see warning
+                        }else if(pre.match(/%([aAbBCdegGHIjklmMpPsSuUVwWyYzZ%])/)) {
+                            data.tokens.push({r:true,v:pre[1],i:true});
+                        }else if(pre.match(/!([aAbBCdegGHIjklmMpPsSuUVwWyYzZ%])/)) {
+                            data.tokens.push({r:true,v:pre[1],i:false});
+                        }else if(pre.match(/%\((.*?)\)/)) {
+                            data.tokens.push( {r:false,v: pre.substring(2,-1), i:false} );
+                        } else {
+                            data.tokens.push({r:false,v:pre,i:false});
+                        }
+                    });
+                    
+                    console.log(data.tokens);
                     if(currentSep.length) { data.tokens.push({r:false,v:currentSep}); currentSep=''; }
                 } /* </ if( ! data ) >
                 
