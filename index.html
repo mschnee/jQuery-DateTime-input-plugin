@@ -8,11 +8,14 @@
 <div><label>Timestamp Input (1330322400000):<input type=text class=timeInput value="1330322400000"/></label></div>
 <div><label>Value Input ("2/27/2012 03:00 PM"):<input type=text class=timeInput value="2/27/2012 03:00 PM"/></label></div>
 <div><label>Timestamp Input (1330322400000):<input type=text class=timeInput2 value="1330322400000"/></label></div>
+<div id="output" >1330322400000</div>
 <script src="jquery-1.7.1.js"></script>
 <script src="jquery.timeInput.js"></script>
 <script>
 $(".timeInput").timeInput({ format:"%m/%d/%y %I:%M %p"});
-$(".timeInput2").timeInput({ format:"%a %e %b %Y"});
+$(".timeInput2").timeInput({ format:"%a %e %b %Y %Z"}).change(function(){
+    $("#output").empty().append ($(".timeInput2").timeInput( 'value' ) );
+});
 </script>
 </body>
 </html>

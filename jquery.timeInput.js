@@ -761,7 +761,7 @@ function strtodate (str, now) {
  */
 (function($){
     /* these are essentially static parameters */
-    var token_re=/[aAbBCdeHIjmMpSuUVwWyYZ]/
+    var token_re=/[aAbBCdeHIjmMpSuUVwWyY]/
     var aggregate_re=/[cDFhnrRtTxX]/;
     
     // phpjs stuff
@@ -895,6 +895,12 @@ function strtodate (str, now) {
         return data.ds;
     }
     
+    
+    function utcdate(format,dateObject,offset) {
+
+        var f =strftime(format,new Date(dateObject.getTime()+offset)); 
+        return f;
+    }
     /**
      * This needs to be called asynchronously, AFTER the input has been handled.
      */
@@ -919,10 +925,10 @@ function strtodate (str, now) {
     function selectToken(data,currentToken) {
         var currentCharIndex = 0;
         for(var i=0; i<currentToken;i++) {
-            currentCharIndex+=(data.tokens[i].r?strftime("%"+data.tokens[i].v,data.ds).trim():data.tokens[i].v).length
+            currentCharIndex+=(data.tokens[i].r?utcdate("%"+data.tokens[i].v,data.ds,data.timezoneOffset).trim():data.tokens[i].v).length
         }
         var tokenValue = data.tokens[i].v;
-        var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?strftime("%"+data.tokens[currentToken].v,data.ds).trim():data.tokens[currentToken].v).length;
+        var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?utcdate("%"+data.tokens[currentToken].v,data.ds,data.timezoneOffset).trim():data.tokens[currentToken].v).length;
         setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
     }
     
@@ -980,6 +986,7 @@ function strtodate (str, now) {
         data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data,true);
         Self.timeInput("updateDisplay");
         selectToken(data,data.currentToken);
+        Self.trigger('change');
     }
     
     function decrementToken(Self) {
@@ -987,6 +994,7 @@ function strtodate (str, now) {
         data.ds = _mfn[data.tokens[data.currentToken].v].call(null,data,false);
         Self.timeInput("updateDisplay");
         selectToken(data,data.currentToken);
+        Self.trigger('change');
     }
     
     var _current = new Date();
@@ -1003,7 +1011,8 @@ function strtodate (str, now) {
             var settings = $.extend({
                 format: "%m/%d/%y %I:%M %p",         /* the format according to strftime() */
                 defaultIsMidnight: false,   /* use the current time (true) or midnight(false) as a fallback */
-                meridianIncrementsDay: false /* roll 11pm on the 23rd to 11am on the 24th */
+                meridianIncrementsDay: false, /* roll 11pm on the 23rd to 11am on the 24th */
+                timeZoneOffset: _current.getTimezoneOffset()
             },params);
             
             return this.each(function(){
@@ -1019,7 +1028,8 @@ function strtodate (str, now) {
                         element: this,
                         displayFormat: settings.format,
                         tokens: [],
-                        ds: null
+                        ds: null,
+                        timezoneOffset: settings.timeZoneOffset*60000
                     });
                     
                     data = Self.data('timeInput');
@@ -1036,6 +1046,7 @@ function strtodate (str, now) {
                         data.ds = settings.defaultIsMidnight?new Date(_current.getFullYear(),_current.getMonth(),_current.getDate(),0,0,0,0):new Date()
                     }
                     
+                    data.ds = new Date(data.ds.getTime()+data.timezoneOffset);
                     data.originalDate = data.ds;
                     
                     // tokenization.  First do string replacement according to phpjs.
@@ -1064,6 +1075,31 @@ function strtodate (str, now) {
                                 data.tokens.push({r:true,v:settings.format[i+1],i:true});
                             } else if (settings.format[i+1]=="%") {
                                 currentSep+=settings.format[i+1];
+                            } else if(/[zZ]/.test(settings.format[i+1])){
+                                /* 
+                                 * WARNING ABOUT TIME ZONES AND DAYLIGHT SAVINGS TIME
+                                 * 
+                                 * Time zone displays should not be editable or displayable.  Why?  Because JavaScript
+                                 * Date() knows absolutely nothing about Time, Dates, or zones.  This is because it's
+                                 * just a very dumb wrapper around some system implementations.  This means you could say
+                                 * "I want to edit some time for something that's in my current time zone".  Say you want to
+                                 * change somebody dirthday that happens to live in Arizona- Arizona has different DST rules
+                                 * than Colorado despite being, nominally, in the same timezone offset.  What will end up happening
+                                 * is that you can increment past the time you want to set, because the time may exist in Arizona,
+                                 * but it doesn't exist in your locale.
+                                 * 
+                                 * The good news is that this is a rendering problem and not an actualy "time" problem.  Time is 
+                                 * stored, internally, as a timestamp (milliseconds since the Epoch), so your system is going to be
+                                 * the monkey getting things wrong.  Your server implementation should check against the tz database,
+                                 * or have some special handling for zone and DST boundaries.
+                                 * 
+                                 * This is one of the MAJOR deficiencies in JavaScript's Date() implementation.  The other two are
+                                 * the lack of any sapient string formatting (which this plugin addresses), and the inability to
+                                 * do any real modification or comparison between dates (which this plugin kind-of-addresses.
+                                 * 
+                                 * If you want to denote that this input is displaying time adjusted for a specific zone, you can 
+                                 * put it in yourself as an escaped string "%H:%I %P %(DST)"
+                                 */
                             } else {
                                 currentSep+="%"+settings.format[i+1];
                             }
@@ -1097,7 +1133,7 @@ function strtodate (str, now) {
                 data = Self.data('timeInput');
             var oStr ='';
             $.each(data.tokens,function(index,val){
-                oStr+=(val.r?strftime("%"+val.v,data.ds).trim():val.v);
+                oStr+=(val.r?utcdate("%"+val.v,data.ds,data.timezoneOffset).trim():val.v);
             });
             Self.val(oStr);
         },
@@ -1125,9 +1161,7 @@ function strtodate (str, now) {
         blur: function(event) {
             
         },
-        click: function(event) {
-            
-        },
+        
         /**
          * Destroy and unbind the events
          */
@@ -1139,6 +1173,10 @@ function strtodate (str, now) {
                 Self.unbind('.timeInput');
                 Self.removeData('timeInput');
             });
+        },
+        value: function() {
+            var data = $(this).data('timeInput');
+            return data.ds.getTime()-data.timezoneOffset;
         }
  
     }
