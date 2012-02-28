@@ -9,17 +9,47 @@
 	</style>
 </head>
 <body>
-<div><label>Blank Input:<input id=t1 type=text class=timeInput /></label></div>
-<div><label>Timestamp Input (1330322400000):<input type=text class=timeInput value="1330322400000"/></label></div>
-<div><label>Value Input ("2/27/2012 03:00 PM"):<input type=text class=timeInput value="2/27/2012 03:00 PM"/></label></div>
-<div><label>Timestamp Input (1330322400000):<input type=text class=timeInput2 value="1330322400000"/></label></div>
-<div id="output" >1330322400000</div>
+<table id=testTable width=100% >
+<tr><th>Input Content</th><th>Filter Used</th><th>Input</th><th>Value</th></tr>
+
+</table>
+
 <script src="jquery-1.7.1.js"></script>
 <script src="jquery.timeInput.js"></script>
 <script>
-$(".timeInput").timeInput({ format:"%m/%d/%y %I:%M %p "});
-$(".timeInput2").timeInput({ format:"%a %e %b %Y %Z"}).change(function(){
-    $("#output").empty().append ($(".timeInput2").timeInput( 'value' ) );
+
+var tests = [
+    [, {displayFormat:"%m/%d/%y %I:%M %p"}],
+    ["1330322400000",{displayFormat:"%m/%d/%y %I:%M %p"}],
+    ["2/27/2012 03:00 PM",{displayFormat:"%m/%d/%y %I:%M %p"}]
+];
+
+var table = document.getElementById("testTable");
+
+$.each(tests,function(index,test){
+    var i = $("<input type=text>");
+    i.val(test[0]);
+    
+    var row = table.insertRow($("#testTable tr").length);
+    
+    var cell = row.insertCell(0);    
+    $(cell).append(test[0]);
+    
+    cell = row.insertCell(1);
+    $(cell).append(test[1].displayFormat);
+    
+    cell = row.insertCell(2);
+    $(cell).append(i);
+    
+    var cell = row.insertCell(3);
+    
+    
+    $(i).timeInput(test[1]).change(function(){
+        $(cell).empty().append( $(i).timeInput( 'value' ) );
+    });
+    $(cell).append($(i).timeInput( 'value' ));
+    
+    
 });
 </script>
 </body>

@@ -1077,8 +1077,8 @@ function strtodate (str, now) {
                     data.originalDate = data.ds;
                     
                     // tokenization.  First do string replacement according to phpjs.
-                    while (settings.format.match(/%[cDFhnrRtTxX]/)) {
-                        settings.format = settings.format.replace(/%([cDFhnrRtTxX])/g, function (m0, m1) {
+                    while (settings.displayFormat.match(/%[cDFhnrRtTxX]/)) {
+                        settings.displayFormat = settings.displayFormat.replace(/%([cDFhnrRtTxX])/g, function (m0, m1) {
                             var f = _aggregates[m1];
                             return (f === 'locale' ? _lc_time[m1] : f);
                         });
@@ -1129,7 +1129,7 @@ function strtodate (str, now) {
                      * matches %(something ) (special escape, everything between (...) is printed as is .. unnecessary?
                      */
                     var testre = /%([aAbBCdegGHIjklmMpPsSuUVwWyYzZ%])|!([aAbBCdegGHIjklmMpPsSuUVwWyYzZ%])|%\((.*?)\)|(.+?)/g;
-                    $.each(settings.format.match(testre),function(index,pre){
+                    $.each(settings.displayFormat.match(testre),function(index,pre){
                         
                         // metachar
                         if(pre.match(/%%|%!/)) {
