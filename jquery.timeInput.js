@@ -958,8 +958,10 @@ function strtodate (str, now) {
         var currentSelection = data.currentToken;
         
         data.currentToken++;        
+        
         if (data.currentToken >= data.tokens.length ) {
             data.currentToken = data.tokens.length-1;
+            return false;
         }else if (data.currentToken <= 0 ) {
             data.currentToken = 0;
         }
@@ -1202,7 +1204,7 @@ function strtodate (str, now) {
                             if(selectPrevToken($(this))) {
                                 event.preventDefault();
                                 selectToken(data,data.currentToken);
-                            }
+                            } 
                         } else {
                             if(selectNextToken($(this))) {
                                 event.preventDefault();
@@ -1212,12 +1214,11 @@ function strtodate (str, now) {
                     }
                     break;
                 case(key.enter): 
-                    
                     if(data.returnCompletesInput) {
                         var fc = $(":focusable");
                         var current = fc.index(data.element);
                         var next = fc.eq(current+1).length ? fc.eq(current+1) : fc.eq(0);
-                        next.focus();
+                        setTimeout(function(){next.focus()},0);
                     }
                     break;
                     
@@ -1228,12 +1229,14 @@ function strtodate (str, now) {
             var Self = $(this),
                 data = Self.data('timeInput');
             data.currentToken = -1;
-            selectRange(data.element,0,0);
+            
             selectNextToken(Self);
             selectToken(data,data.currentToken);
         },
         blur: function(event) {
-            
+            var Self = $(this),
+            data = Self.data('timeInput');
+            data.currentToken = -1;
         },
         
         /**
