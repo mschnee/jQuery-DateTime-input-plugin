@@ -760,6 +760,22 @@ function strtodate (str, now) {
  * should roll up the hours when you pass above 59 or below 0, and then wrap.
  */
 (function($){
+    /* from jquery UI */
+    $.extend($.expr[':'], {
+        focusable: function(element) {
+            var nodeName = element.nodeName.toLowerCase(),
+             tabIndex = $.attr(element, 'tabindex');
+             return (/input|select|textarea|button|object/.test(nodeName)
+             ? !element.disabled
+             : 'a' == nodeName || 'area' == nodeName
+             ? element.href || !isNaN(tabIndex)
+             : !isNaN(tabIndex))
+    // the element and all of its ancestors must be visible
+    // the browser may report that the area is hidden
+    && !$(element)['area' == nodeName ? 'parents' : 'closest'](':hidden').length;
+        }
+    });
+
     /* these are essentially static parameters */
     var token_re=/[aAbBCdeHIjmMpSuUVwWyY]/
     var aggregate_re=/[cDFhnrRtTxX]/;
@@ -932,13 +948,15 @@ function strtodate (str, now) {
         setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
     }
     
+    /* old */
+/*    
     /**
      * Increments token.
      */
     function selectNextToken(Self) {
         var data = Self.data('timeInput');
         var currentSelection = data.currentToken;
-
+        
         data.currentToken++;        
         if (data.currentToken >= data.tokens.length ) {
             data.currentToken = data.tokens.length-1;
@@ -959,6 +977,38 @@ function strtodate (str, now) {
         selectToken(data,data.currentToken);
         return false;
     }
+    /**
+     * Increments token.
+     *
+    function selectNextToken(Self) {
+        var data = Self.data('timeInput');
+        var currentSelection = data.currentToken;
+        
+        data.currentToken++;        
+        if (data.currentToken >= data.tokens.length ) {
+            data.currentToken = data.tokens.length-1;
+        }else if (data.currentToken <= 0 ) {
+            data.currentToken = 0;
+        }
+        
+        for(var i=data.currentToken;i<data.tokens.length;i++) {
+            if( !data.tokens[i].r || !data.tokens[i].i ) {
+                data.currentToken++;
+            } else {
+                break
+            }
+        }
+        console.log(".");
+        if(data.currentToken >= data.tokens.length) {
+            data.currentToken = currentSelection;
+        }  
+        
+        selectToken(data,data.currentToken);
+        return true;
+        
+        
+    }*/
+    
     
     /**
      * Decrement's token.
@@ -983,6 +1033,40 @@ function strtodate (str, now) {
         selectToken(data,data.currentToken);
         return false;
     }
+    
+
+    
+    /**
+     * Decrement's token.
+     *
+    function selectPrevToken(Self) {
+        var data = Self.data('timeInput');
+        /*
+        if(data.currentToken <=0) {
+            return false;
+        }
+        // 
+        data.currentToken--;
+        if (data.currentToken >= data.tokens.length ) {
+            data.currentToken = data.tokens.length-1;
+        }else if (data.currentToken <= 0 ) {
+            data.currentToken = 0;
+        }
+        
+        // extra processing for decrement since we count up from 0 for lengths.
+        for(var i=data.currentToken; i>=0;i--) {
+            if( !data.tokens[i].r || !data.tokens[i].i ) {
+                data.currentToken--;
+            } else {
+                break;
+            }
+        }
+        
+        selectToken(data,data.currentToken);
+        return true;
+        
+    }
+    */
     
     function incrementToken(Self) {
         var data = Self.data('timeInput');
@@ -1012,10 +1096,13 @@ function strtodate (str, now) {
          */
         init: function(params) {
             var settings = $.extend({
-                format: "%m/%d/%y %I:%M %p",         /* the format according to strftime() */
+                displayFormat: "%m/%d/%y %I:%M %p",         /* the format according to strftime() */
                 defaultIsMidnight: false,   /* use the current time (true) or midnight(false) as a fallback */
                 meridianIncrementsDay: false, /* roll 11pm on the 23rd to 11am on the 24th */
-                timeZoneOffset: _current.getTimezoneOffset()
+                timezoneOffset: _current.getTimezoneOffset(),
+                tabIncrementsSelection: true,
+                returnCompletesInput: true
+                
             },params);
             
             return this.each(function(){
@@ -1027,13 +1114,11 @@ function strtodate (str, now) {
                     take care of all the dirty work.
                  */
                 if( ! data ) {
-                    Self.data('timeInput',{
+                    Self.data('timeInput',$.extend(settings,{
                         element: this,
-                        displayFormat: settings.format,
                         tokens: [],
                         ds: null,
-                        timezoneOffset: settings.timeZoneOffset*60000
-                    });
+                    }));
                     
                     data = Self.data('timeInput');
                     
@@ -1123,7 +1208,6 @@ function strtodate (str, now) {
                         }
                     });
                     
-                    console.log(data.tokens);
                     if(currentSep.length) { data.tokens.push({r:false,v:currentSep}); currentSep=''; }
                 } /* </ if( ! data ) >
                 
@@ -1163,9 +1247,33 @@ function strtodate (str, now) {
                 case(key.right): return selectNextToken($(this)); break;
                 case(key.up): return incrementToken($(this)); break;
                 case(key.down): return decrementToken($(this)); break;
+                
+                case(key.tab):
+                    var data = $(this).data('timeInput');
+                    if (data.tabIncrementsSelection) {
+                        if(event.shiftKey) {
+                            if(selectPrevToken($(this)))
+                                event.preventDefault();
+                        } else {
+                            if(selectNextToken($(this)))
+                                event.preventDefault();
+                        }
+                    }
+                    break;
+                case(key.enter): 
+                    var data = $(this).data('timeInput');
+                    if(data.returnCompletesInput) {
+                        var fc = $(":focusable");
+                        var current = fc.index(data.element);
+                        var next = fc.eq(current+1).length ? fc.eq(current+1) : fc.eq(0);
+                        next.focus();
+                    }
+                    break;
+                    
             }
         },
         focus: function(event) {
+            
             var Self = $(this),
                 data = Self.data('timeInput');
             data.currentToken = -1;
