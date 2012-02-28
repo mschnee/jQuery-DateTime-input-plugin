@@ -919,10 +919,10 @@ function strtodate (str, now) {
     function selectToken(data,currentToken) {
         var currentCharIndex = 0;
         for(var i=0; i<currentToken;i++) {
-            currentCharIndex+=(data.tokens[i].r?strftime("%"+data.tokens[i].v,data.ds):data.tokens[i].v).length
+            currentCharIndex+=(data.tokens[i].r?strftime("%"+data.tokens[i].v,data.ds).trim():data.tokens[i].v).length
         }
         var tokenValue = data.tokens[i].v;
-        var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?strftime("%"+data.tokens[currentToken].v,data.ds):data.tokens[currentToken].v).length;
+        var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?strftime("%"+data.tokens[currentToken].v,data.ds).trim():data.tokens[currentToken].v).length;
         setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
     }
     
@@ -1097,7 +1097,7 @@ function strtodate (str, now) {
                 data = Self.data('timeInput');
             var oStr ='';
             $.each(data.tokens,function(index,val){
-                oStr+=(val.r?strftime("%"+val.v,data.ds):val.v);
+                oStr+=(val.r?strftime("%"+val.v,data.ds).trim():val.v);
             });
             Self.val(oStr);
         },
