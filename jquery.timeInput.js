@@ -972,43 +972,14 @@ function strtodate (str, now) {
             }
         }
         
-        if(data.currentToken >= data.tokens.length)
-            data.currentToken = currentSelection;
-        selectToken(data,data.currentToken);
-        return false;
-    }
-    /**
-     * Increments token.
-     *
-    function selectNextToken(Self) {
-        var data = Self.data('timeInput');
-        var currentSelection = data.currentToken;
         
-        data.currentToken++;        
-        if (data.currentToken >= data.tokens.length ) {
-            data.currentToken = data.tokens.length-1;
-        }else if (data.currentToken <= 0 ) {
-            data.currentToken = 0;
-        }
-        
-        for(var i=data.currentToken;i<data.tokens.length;i++) {
-            if( !data.tokens[i].r || !data.tokens[i].i ) {
-                data.currentToken++;
-            } else {
-                break
-            }
-        }
-        console.log(".");
         if(data.currentToken >= data.tokens.length) {
             data.currentToken = currentSelection;
-        }  
+            return false; // doesn't move
+        }
+        return true; // moves
         
-        selectToken(data,data.currentToken);
-        return true;
-        
-        
-    }*/
-    
+    }    
     
     /**
      * Decrement's token.
@@ -1020,38 +991,8 @@ function strtodate (str, now) {
             data.currentToken = data.tokens.length-1;
         }else if (data.currentToken <= 0 ) {
             data.currentToken = 0;
-        }
-        
-        // extra processing for decrement since we count up from 0 for lengths.
-        for(var i=data.currentToken; i>=0;i--) {
-            if( !data.tokens[i].r || !data.tokens[i].i ) {
-                data.currentToken--;
-            } else {
-                break;
-            }
-        }
-        selectToken(data,data.currentToken);
-        return false;
-    }
-    
-
-    
-    /**
-     * Decrement's token.
-     *
-    function selectPrevToken(Self) {
-        var data = Self.data('timeInput');
-        /*
-        if(data.currentToken <=0) {
             return false;
         }
-        // 
-        data.currentToken--;
-        if (data.currentToken >= data.tokens.length ) {
-            data.currentToken = data.tokens.length-1;
-        }else if (data.currentToken <= 0 ) {
-            data.currentToken = 0;
-        }
         
         // extra processing for decrement since we count up from 0 for lengths.
         for(var i=data.currentToken; i>=0;i--) {
@@ -1061,12 +1002,10 @@ function strtodate (str, now) {
                 break;
             }
         }
-        
-        selectToken(data,data.currentToken);
+        if(data.currentToken <0)
+            return false;
         return true;
-        
     }
-    */
     
     function incrementToken(Self) {
         var data = Self.data('timeInput');
@@ -1100,8 +1039,8 @@ function strtodate (str, now) {
                 defaultIsMidnight: false,   /* use the current time (true) or midnight(false) as a fallback */
                 meridianIncrementsDay: false, /* roll 11pm on the 23rd to 11am on the 24th */
                 timezoneOffset: _current.getTimezoneOffset(),
-                tabIncrementsSelection: true,
-                returnCompletesInput: true
+                tabIncrementsSelection: true,   /* tab advances like right-arrow */
+                returnCompletesInput: true,     /* enter tells the document to move to the next focus, like tab would have */
                 
             },params);
             
@@ -1114,11 +1053,11 @@ function strtodate (str, now) {
                     take care of all the dirty work.
                  */
                 if( ! data ) {
-                    Self.data('timeInput',$.extend(settings,{
+                    Self.data('timeInput',$.extend({
                         element: this,
                         tokens: [],
                         ds: null,
-                    }));
+                    },settings));
                     
                     data = Self.data('timeInput');
                     
@@ -1242,26 +1181,38 @@ function strtodate (str, now) {
         keydown: function(event) {
         
             var key = {left: 37, up: 38, right: 39, down: 40, tab:9, enter:13, backspace: 8 };
+            var data = $(this).data('timeInput');
             switch(event.which) {
-                case(key.left): return selectPrevToken($(this)); break;
-                case(key.right): return selectNextToken($(this)); break;
+                case(key.left): 
+                    if(selectPrevToken($(this)))
+                        selectToken(data,data.currentToken);
+                       
+                    break;
+                case(key.right): 
+                    if(selectNextToken($(this))){
+                        selectToken(data,data.currentToken);
+                    } 
+                    break;
                 case(key.up): return incrementToken($(this)); break;
                 case(key.down): return decrementToken($(this)); break;
                 
                 case(key.tab):
-                    var data = $(this).data('timeInput');
                     if (data.tabIncrementsSelection) {
                         if(event.shiftKey) {
-                            if(selectPrevToken($(this)))
+                            if(selectPrevToken($(this))) {
                                 event.preventDefault();
+                                selectToken(data,data.currentToken);
+                            }
                         } else {
-                            if(selectNextToken($(this)))
+                            if(selectNextToken($(this))) {
                                 event.preventDefault();
+                                selectToken(data,data.currentToken);
+                            }
                         }
                     }
                     break;
                 case(key.enter): 
-                    var data = $(this).data('timeInput');
+                    
                     if(data.returnCompletesInput) {
                         var fc = $(":focusable");
                         var current = fc.index(data.element);
@@ -1279,6 +1230,7 @@ function strtodate (str, now) {
             data.currentToken = -1;
             selectRange(data.element,0,0);
             selectNextToken(Self);
+            selectToken(data,data.currentToken);
         },
         blur: function(event) {
             
