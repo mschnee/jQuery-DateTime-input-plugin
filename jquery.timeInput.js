@@ -1,4 +1,4 @@
-function setlocale (category, locale) {
+;function setlocale (category, locale) {
     // http://kevin.vanzonneveld.net
     // +   original by: Brett Zamir (http://brett-zamir.me)
     // +   derived from: Blues at http://hacks.bluesmoon.info/strftime/strftime.js
@@ -833,6 +833,10 @@ function strtodate (str, now) {
         Z: _m_zone
     }
     
+    var _cfn = {
+        
+    }
+    
     function _m_day(data,inc) {
         return new Date(data.ds.getTime()+(inc?86400000:-86400000));
     }
@@ -917,6 +921,21 @@ function strtodate (str, now) {
         var f =strftime(format,new Date(dateObject.getTime()+offset)); 
         return f;
     }
+    function getCursorPos(element) {
+        var ret = 0;
+        
+        if(element.setSelectionRange) {
+            ret= element.selectionStart;
+        } else if(document.selection) {
+            element.focus();
+            var block = document.selection.createRange();
+            block.moveEnd('character', element.value.length);
+            ret= this.field.value.lastIndexOf(block.text);
+        }
+        
+        console.log(ret);
+        return ret;
+    }
     /**
      * This needs to be called asynchronously, AFTER the input has been handled.
      */
@@ -948,8 +967,26 @@ function strtodate (str, now) {
         setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
     }
     
-    /* old */
-/*    
+
+    function findTokenAtCursor(Self,position) {
+        var currentCharIndex = 0;
+        var currentTokenIndex = 0;
+        var data = Self.data('timeInput');
+        while(currentCharIndex < position) {
+            // increment to the next active token
+            
+            currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
+            currentTokenIndex++;
+            while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].r) {
+                currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
+                currentTokenIndex++;                
+            }
+        }
+        if(currentTokenIndex >= data.tokens.length)
+            currentTokenIndex=data.tokens.length-1;
+        return currentTokenIndex;
+    }
+    
     /**
      * Increments token.
      */
@@ -1024,7 +1061,18 @@ function strtodate (str, now) {
         selectToken(data,data.currentToken);
         Self.trigger('change');
     }
-    
+    function inputCharacter(Self,char) {
+        var data = Self.data('timeInput');
+        if( data.currentInput.length ) {
+            var check = data.currentInput+char
+            // if check matches a valid value for the given token, allow it.
+            if(data.selectedToken && _lc_time[ data.tokens[data.selectedToken] ] ) {
+                var avail = _lc_time[ data.tokens[data.selectedToken] ];
+                    console.log(avail);
+                
+            }
+        }
+    }
     var _current = new Date();
     
     var methods = {
@@ -1153,10 +1201,12 @@ function strtodate (str, now) {
                 } /* </ if( ! data ) >
                 
                 /* bind the elements to keypress */
+                Self.bind('mousedown.timeInput', methods.mousedown);
+                Self.bind('mouseup.timeInput', methods.mouseup);
                 Self.bind('keydown.timeInput', methods.keydown);
                 Self.bind('focus.timeInput', methods.focus);
                 Self.bind('blur.timeInput', methods.blur);
-                Self.bind('click.timeInput', methods.mouseclick);
+                
                 
                 /* Update the input element */
                 Self.timeInput("updateDisplay");
@@ -1188,15 +1238,16 @@ function strtodate (str, now) {
                 case(key.left): 
                     if(selectPrevToken($(this)))
                         selectToken(data,data.currentToken);
-                       
+                    return false;
                     break;
                 case(key.right): 
                     if(selectNextToken($(this))){
                         selectToken(data,data.currentToken);
-                    } 
+                    }
+                    return false;
                     break;
-                case(key.up): return incrementToken($(this)); break;
-                case(key.down): return decrementToken($(this)); break;
+                case(key.up): return incrementToken($(this)); return false; break;
+                case(key.down): return decrementToken($(this)); return false; break;
                 
                 case(key.tab):
                     if (data.tabIncrementsSelection) {
@@ -1212,6 +1263,7 @@ function strtodate (str, now) {
                             }
                         }
                     }
+                    return false;
                     break;
                 case(key.enter): 
                     if(data.returnCompletesInput) {
@@ -1220,23 +1272,50 @@ function strtodate (str, now) {
                         var next = fc.eq(current+1).length ? fc.eq(current+1) : fc.eq(0);
                         setTimeout(function(){next.focus()},0);
                     }
+                    return false;
                     break;
-                    
+                
             }
+            /* okay, so we didn't match the special keys, so it might be a number/letter */
+            var code=String.fromCharCode(event.which);
+            if(code.match(/[\d\w]/)) {
+                inputCharacter($(this),code);
+            }
+            return false;
         },
         focus: function(event) {
-            
+            /* we either focus on tab (index 0) or focus on click (find index) 
+                This can be determined by finding the current cursor position.
+            */
             var Self = $(this),
                 data = Self.data('timeInput');
-            data.currentToken = -1;
+
             
-            selectNextToken(Self);
+            if( ! data.clicked ){
+                // we tabbed in
+                data.currentToken = -1;
+                selectNextToken(Self);
+                data.clicked=false;
+            } else {
+                var cPos = getCursorPos(data.element);
+                var tok = findTokenAtCursor(Self,cPos);
+                console.log(tok);
+                data.currentToken = tok;
+            }
             selectToken(data,data.currentToken);
         },
         blur: function(event) {
             var Self = $(this),
             data = Self.data('timeInput');
             data.currentToken = -1;
+            data.clicked=false
+        },
+        mousedown: function(event) {
+            $(this).data('timeInput').clicked = true;
+            $(this).focus();
+        },
+        mouseup: function(event) {
+            $(this).data('timeInput').clicked = false;
         },
         
         /**
@@ -1255,6 +1334,8 @@ function strtodate (str, now) {
             var data = $(this).data('timeInput');
             return data.ds.getTime()-data.timezoneOffset;
         }
+        
+        
  
     }
     var publicMethods = [ 'keypress' ];
