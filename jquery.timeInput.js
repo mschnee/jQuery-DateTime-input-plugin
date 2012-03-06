@@ -977,7 +977,7 @@ function strtodate (str, now) {
         var data = Self.data('timeInput');
         
         /* first, increment to the first VALID interactive token */
-        while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].r) {
+        while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].i) {
             currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
             currentTokenIndex++;                
         }
@@ -990,10 +990,10 @@ function strtodate (str, now) {
         while(currentCharIndex < position) {
             // increment to the next active token
             
-            currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
+            currentCharIndex+=(data.tokens[currentTokenIndex].r&&data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
             currentTokenIndex++;
             
-            while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].r) {
+            while( currentTokenIndex < data.tokens.length && !(data.tokens[currentTokenIndex].i)) {
                 currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
                 currentTokenIndex++;                
             }
