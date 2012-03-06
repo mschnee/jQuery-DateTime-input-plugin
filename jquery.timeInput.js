@@ -1078,6 +1078,13 @@ function strtodate (str, now) {
         selectToken(data,data.currentToken);
         Self.trigger('change');
     }
+    
+    function checkResize(Self) {
+        var data = Self.data('timeInput');
+        if(data.autoResize) {
+            Self.element.size = Self.val().length;
+        }
+    }
     /*
     function inputCharacter(Self,char) {
         var data = Self.data('timeInput');
@@ -1103,12 +1110,13 @@ function strtodate (str, now) {
          */
         init: function(params) {
             var settings = $.extend({
-                displayFormat: "%m/%d/%y %I:%M %p",         /* the format according to strftime() */
-                defaultIsMidnight: false,   /* use the current time (true) or midnight(false) as a fallback */
-                meridianIncrementsDay: false, /* roll 11pm on the 23rd to 11am on the 24th */
+                displayFormat: "%m/%d/%Y %I:%M %p",             /* the format according to strftime(), defaults to an American time format. */
+                defaultIsMidnight: false,                       /* use the current time (true) or midnight(false) as a fallback */
+                meridianIncrementsDay: false,                   /* roll 11pm on the 23rd to 11am on the 24th */
                 timezoneOffset: _current.getTimezoneOffset(),
-                tabIncrementsSelection: true,   /* tab advances like right-arrow */
-                returnCompletesInput: true,     /* enter tells the document to move to the next focus, like tab would have */
+                tabIncrementsSelection: true,                   /* tab advances like right-arrow */
+                returnCompletesInput: true,                     /* enter tells the document to move to the next focus, like tab would have */
+                autoResize: false,                              /* automatically resize the input */
                 
             },params);
             
@@ -1243,6 +1251,9 @@ function strtodate (str, now) {
                 oStr+=(val.r?utcdate("%"+val.v,data.ds,data.timezoneOffset).trim():val.v);
             });
             Self.val(oStr);
+            if(data.autoResize) {
+                Self.attr("size",oStr.length);
+            }
         },
  
         /**
