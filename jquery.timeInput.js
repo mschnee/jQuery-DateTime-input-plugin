@@ -1273,12 +1273,12 @@ function strtodate (str, now) {
                             if(selectPrevToken($(this))) {
                                 event.preventDefault();
                                 selectToken(data,data.currentToken);
-                            } 
+                            } else return true;
                         } else {
                             if(selectNextToken($(this))) {
                                 event.preventDefault();
                                 selectToken(data,data.currentToken);
-                            }
+                            } else return true;
                         }
                     }
                     return false;
