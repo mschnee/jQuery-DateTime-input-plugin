@@ -4,6 +4,8 @@ Because I am sick and tired of the nasty messes of combinations of select boxes 
 
 This plugin is currently under development.  It's not done.  I'll update this README once it is.
 
+A live example can be found at http://mschnee.twopitau.com/timeInput/index.html .  I will try to keep it up-to-date.
+
 == USAGE ==
 $("input#yourTextInput").timeInput({format:"Legal strftime format"});
 
