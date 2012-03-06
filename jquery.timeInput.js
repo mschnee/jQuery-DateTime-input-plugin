@@ -932,8 +932,6 @@ function strtodate (str, now) {
             block.moveEnd('character', element.value.length);
             ret= this.field.value.lastIndexOf(block.text);
         }
-        
-        console.log(ret);
         return ret;
     }
     /**
@@ -956,6 +954,11 @@ function strtodate (str, now) {
             // possible fallback
         }
     }
+    function clearSelection() {
+        if(window.getSelection) {
+            window.getSelection().removeAllRanges();
+        }
+    }
     
     function selectToken(data,currentToken) {
         var currentCharIndex = 0;
@@ -972,11 +975,24 @@ function strtodate (str, now) {
         var currentCharIndex = 0;
         var currentTokenIndex = 0;
         var data = Self.data('timeInput');
+        
+        /* first, increment to the first VALID interactive token */
+        while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].r) {
+            currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
+            currentTokenIndex++;                
+        }
+        // move the index to the end of the token
+        currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
+        
+        /* second, compare the currentCharacterIndex to the position */
+        
+        
         while(currentCharIndex < position) {
             // increment to the next active token
             
             currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
             currentTokenIndex++;
+            
             while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].r) {
                 currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
                 currentTokenIndex++;                
@@ -984,6 +1000,7 @@ function strtodate (str, now) {
         }
         if(currentTokenIndex >= data.tokens.length)
             currentTokenIndex=data.tokens.length-1;
+        
         return currentTokenIndex;
     }
     
@@ -1061,6 +1078,7 @@ function strtodate (str, now) {
         selectToken(data,data.currentToken);
         Self.trigger('change');
     }
+    /*
     function inputCharacter(Self,char) {
         var data = Self.data('timeInput');
         if( data.currentInput.length ) {
@@ -1068,11 +1086,11 @@ function strtodate (str, now) {
             // if check matches a valid value for the given token, allow it.
             if(data.selectedToken && _lc_time[ data.tokens[data.selectedToken] ] ) {
                 var avail = _lc_time[ data.tokens[data.selectedToken] ];
-                    console.log(avail);
                 
             }
         }
     }
+    */
     var _current = new Date();
     
     var methods = {
@@ -1279,7 +1297,7 @@ function strtodate (str, now) {
             /* okay, so we didn't match the special keys, so it might be a number/letter */
             var code=String.fromCharCode(event.which);
             if(code.match(/[\d\w]/)) {
-                inputCharacter($(this),code);
+                //inputCharacter($(this),code);
             }
             return false;
         },
@@ -1290,18 +1308,24 @@ function strtodate (str, now) {
             var Self = $(this),
                 data = Self.data('timeInput');
 
-            
-            if( ! data.clicked ){
-                // we tabbed in
+            if(data.mouseDown) {
+                // don't do ANYTHING if we're in here on mousedown -- focus() will be called manually
+                return;
+            }
+            if(data.clicked) {
+                /* should be called from mouseUp() 
+                    There's no cursor until the mouse is released.
+                */
+                $(this).data('timeInput').clicked = false;
+                var cPos = getCursorPos(data.element);
+                var tok = findTokenAtCursor(Self,cPos);
+                data.currentToken = tok;
+            } else {
+                /* tabbed in */
                 data.currentToken = -1;
                 selectNextToken(Self);
                 data.clicked=false;
-            } else {
-                var cPos = getCursorPos(data.element);
-                var tok = findTokenAtCursor(Self,cPos);
-                console.log(tok);
-                data.currentToken = tok;
-            }
+            } 
             selectToken(data,data.currentToken);
         },
         blur: function(event) {
@@ -1311,11 +1335,14 @@ function strtodate (str, now) {
             data.clicked=false
         },
         mousedown: function(event) {
+            clearSelection();
+            $(this).data('timeInput').mouseDown = true;
             $(this).data('timeInput').clicked = true;
-            $(this).focus();
         },
         mouseup: function(event) {
-            $(this).data('timeInput').clicked = false;
+            //clearSelection();
+            $(this).data('timeInput').mouseDown = false;
+            $(this).focus();
         },
         
         /**
