@@ -15,7 +15,8 @@ Some important information for you:
 <br/>
 <ul>
 <li>All of the strftime() tokens are supported for formatting.</li>
-<li>All of the strftime() tokens are supported for user-interaction except for %z and %Z, for two reasons:.  <ul><li>Changing the zone doesn't affect the time at all (an internal timestamp), only the display of the time.</li><li>Changing zones and the zone display properly requires having access to the proper tz_data, up-to-date DST boundary tules for the zone.  Date() doesn't know about any of this- it exists in your system's locale only, and depending on your locale, your time zone changes depending on the selected time and date.  That data can ALSO change over time.  Date() doesn't know anything about that.</li><li>There is no workaround in Javascript for the DST-boundary locale problem without including the entire tz database and creating a custom Date() object (beyond the scope of this plugin) or W3C changing the spec for the Date() object and browsers to change locale in the browser window on-the-fly.</li><li><b>Note</b>: these problems are why most web programmers cheap out and put up the three Select boxes for choosing a date.</li></ul></li>
+<li>All of the strftime() tokens are supported for user-interaction except for %z and %Z, for two reasons:.  <ul><li>Changing the zone doesn't affect the time at all (an internal timestamp), only the display of the time.</li><li>Changing zones and the zone display properly requires having access to the proper tz_data, up-to-date DST boundary tules for the zone.  Date() doesn't know about any of this- it exists in your system's locale only, and depending on your locale, your time zone changes depending on the selected time and date.  That data can ALSO change over time.  Date() doesn't know anything about that.</li><li>There is no workaround in Javascript for the DST-boundary locale problem without including the entire tz database and creating a custom Date() object (beyond the scope of this plugin) or W3C changing the spec for the Date() object and browsers to change locale in the browser window on-the-fly.</li><li><b>Note</b>: these problems are why most web programmers cheap out and put up the three Select 
+boxes for choosing a date.</li></ul></li>
 <li>Tokens in the format of exclaimation-character instead of percent-character are <b>non-interactive replacements</b>.  These are tokens that will be replaced according to strftime() rules, but the user won't be able to interact with them.</li>
 <li>The input on this page is currently configuredas such: <b>Tab</b> advances tokens in an input, and after the last interactive token will advance to the next focusable input. <b>Enter</b> advances to the next focusable object (like tab normally does).</li>
 </ul>
@@ -32,7 +33,7 @@ Some important information for you:
 var tests = [
     [, {displayFormat:"%m/%d/%y %I:%M %p"}],
     ["1330322400000",{displayFormat:"%m/%d/%y %I:%M %p"}],
-    ["1330322400000",{displayFormat:"%c",autoResize:true}],
+    ["1330322400000",{displayFormat:"!c",autoResize:true}],
     ["1330322400000",{displayFormat:"%m/!d/%Y"}],
     ["2/27/2012 03:00 PM",{displayFormat:"%m/%d/%y %I:%M %p"}]
 ];

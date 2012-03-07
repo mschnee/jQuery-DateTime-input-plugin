@@ -965,6 +965,8 @@ function strtodate (str, now) {
         for(var i=0; i<currentToken;i++) {
             currentCharIndex+=(data.tokens[i].r?utcdate("%"+data.tokens[i].v,data.ds,data.timezoneOffset).trim():data.tokens[i].v).length
         }
+        if(currentToken <0 || currentToken >= data.tokens.length)
+            return false;
         var tokenValue = data.tokens[i].v;
         var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?utcdate("%"+data.tokens[currentToken].v,data.ds,data.timezoneOffset).trim():data.tokens[currentToken].v).length;
         setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
@@ -977,10 +979,15 @@ function strtodate (str, now) {
         var data = Self.data('timeInput');
         
         /* first, increment to the first VALID interactive token */
-        while( currentTokenIndex < data.tokens.length && !data.tokens[currentTokenIndex].i) {
+        while( currentTokenIndex < data.tokens.length && !(data.tokens[currentTokenIndex].i)) {
             currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
             currentTokenIndex++;                
         }
+        if(currentTokenIndex <0 || currentTokenIndex >= data.tokens.length) {
+            // if nothing is selectable.
+            return -1;
+        }
+        
         // move the index to the end of the token
         currentCharIndex+=(data.tokens[currentTokenIndex].r?utcdate("%"+data.tokens[currentTokenIndex].v,data.ds,data.timezoneOffset).trim():data.tokens[currentTokenIndex].v).length;
         
@@ -1000,7 +1007,6 @@ function strtodate (str, now) {
         }
         if(currentTokenIndex >= data.tokens.length)
             currentTokenIndex=data.tokens.length-1;
-        
         return currentTokenIndex;
     }
     
@@ -1157,6 +1163,12 @@ function strtodate (str, now) {
                         settings.displayFormat = settings.displayFormat.replace(/%([cDFhnrRtTxX])/g, function (m0, m1) {
                             var f = _aggregates[m1];
                             return (f === 'locale' ? _lc_time[m1] : f);
+                        });
+                    }
+                    while (settings.displayFormat.match(/![cDFhnrRtTxX]/)) {
+                        settings.displayFormat = settings.displayFormat.replace(/!([cDFhnrRtTxX])/g, function (m0, m1) {
+                            var f = _aggregates[m1];
+                            return (f === 'locale' ? _lc_time[m1] : f).replace(/%/g,'!');
                         });
                     }
 
