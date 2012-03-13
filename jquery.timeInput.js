@@ -834,7 +834,62 @@ function strtodate (str, now) {
     }
     
     var _cfn = {
-        
+        a: _c_dayOfWeek,
+        A: _c_dayOfWeek,
+        d: 'setDate',
+        e: 'setDate',
+        j: _c_dayOfYear,
+        u: 'setDate',
+        w: 'setDate',
+        b: 'setMonth',
+        B: 'setMonth',
+        h: 'setMonth',
+        m: 'setMonth',
+        C: _c_century,
+        g: _c_2year,
+        G: 'setFullYear',
+        y: _c_2year,
+        Y: 'setFullYear',
+        H: 'setHours',
+        I: _c_12hour,
+        l: _c_12hour,
+        p: _c_meridian,
+        P: _c_meridian,
+        M: 'setMinutes',
+        S: 'setSeconds',
+        s: 'setSeconds'
+    }
+    
+    function _c_century(date,tokenVal) {
+        return date;
+    }
+    function _c_2year(date,tokenVal) {
+        return date;
+    }
+    function _c_12hour(date,tokenVal) {
+        return date;
+    }
+    function _c_meridian(date,tokenVal) {
+        // 0= am, 1= pm
+        var ret = new Date(date);
+        if(tokenVal) {
+            if(date.getHours() <12)
+                ret.setHours(ret.getHours()+12);
+        } else {
+            if(date.getHours() >=12)
+                ret.setHours(ret.getHours()-12);
+        }
+        return ret;
+    }
+    function _c_dayOfWeek(date,tokenVal) {
+        var c= tokenVal-date.getDay();
+        if(tokenVal-c <0)
+            c+=7;
+        return new Date(date.getTime()+c*86400000);
+    }
+    
+    function _c_dayOfYear(date,tokenVal) {
+        return date;
     }
     
     function _m_day(data,inc) {
@@ -917,7 +972,6 @@ function strtodate (str, now) {
     
     
     function utcdate(format,dateObject,offset) {
-
         var f =strftime(format,new Date(dateObject.getTime()+offset)); 
         return f;
     }
@@ -969,6 +1023,18 @@ function strtodate (str, now) {
             return false;
         var tokenValue = data.tokens[i].v;
         var endCharIndex = currentCharIndex+(data.tokens[currentToken].r?utcdate("%"+data.tokens[currentToken].v,data.ds,data.timezoneOffset).trim():data.tokens[currentToken].v).length;
+        setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
+    }
+    
+    function selectPartialToken(data,currentToken,length) {
+        var currentCharIndex = 0;
+        for(var i=0; i<currentToken;i++) {
+            currentCharIndex+=(data.tokens[i].r?utcdate("%"+data.tokens[i].v,data.ds,data.timezoneOffset).trim():data.tokens[i].v).length
+        }
+        if(currentToken <0 || currentToken >= data.tokens.length)
+            return false;
+        var tokenValue = data.tokens[i].v;
+        var endCharIndex = currentCharIndex+length;
         setTimeout(function(){selectRange(data.element,currentCharIndex,endCharIndex)},0);
     }
     
@@ -1091,19 +1157,83 @@ function strtodate (str, now) {
             Self.element.size = Self.val().length;
         }
     }
-    /*
+    
+    /**
+     * Handles inputting a character on a given token.
+     * We want to "change" a token within a current context, eg, hours within a day,
+     * days within a week, months within a year.  We aren't incrementing or 
+     * decrementing, only changing.
+     */
     function inputCharacter(Self,char) {
         var data = Self.data('timeInput');
-        if( data.currentInput.length ) {
-            var check = data.currentInput+char
-            // if check matches a valid value for the given token, allow it.
-            if(data.selectedToken && _lc_time[ data.tokens[data.selectedToken] ] ) {
-                var avail = _lc_time[ data.tokens[data.selectedToken] ];
+        if( ! data.currentInput )
+            data.currentInput = "";
+        var iCheck = data.currentInput+char;
+        
+        /* only days of the week and month names will show up in this list */
+        if(data.currentToken>=0 && _lc_time[ data.tokens[data.currentToken].v ] ) {
+            var c = 0, v=0, f=null;
+            
+            $.each(_lc_time[ data.tokens[data.currentToken].v ],function(i,e){
+                if( (e.toLowerCase()+'').indexOf(iCheck.toLowerCase(),0)===0 ) {
+                    if(f===null)
+                        f=i;
+                    c++;
+                }
+            });
+            
+            if(c==0) {
+                if(data.currentInput.length) 
+                    selectPartialToken(data,data.currentToken,data.currentInput.length);
+                else
+                    selectToken(data,data.currentToken);
+            } else if (c==1) {
+                // set and move on.
+                if(inputSet(Self,data.tokens[data.currentToken].v,f)) {
+                    data.currentInput = "";
+                    Self.timeInput('updateDisplay');
+                    if(data.currentToken == data.tokens.length-1) {
+                        focusNextElement(Self.element);
+                    } else if(selectNextToken(Self)){
+                        selectToken(data,data.currentToken);
+                    }
+                } 
+                Self.trigger('change');
+            } else {
+                // set and update selection.
                 
+                if(inputSet(Self,data.tokens[data.currentToken].v,f)) {
+                    Self.timeInput('updateDisplay');
+                    selectPartialToken(data,data.currentToken,iCheck.length);
+                    data.currentInput = iCheck;
+                }
+                Self.trigger('change');
             }
+            
+        } else {
+            // might be numeric?
         }
     }
-    */
+    // tokenVal is %M or similar, resultVal is a month's number to set.
+    function inputSet(Self,tokenVal,resultVal) { 
+        if(typeof _cfn[tokenVal] === 'function') {
+            Self.data('timeInput').ds =  _cfn[tokenVal].call(Self,Self.data('timeInput').ds,resultVal);
+            return true;
+        }else if(Date.prototype[ _cfn[tokenVal] ] ) {
+            var d = new Date(Self.data('timeInput').ds.getTime()+Self.data('timeInput').timezoneOffset);
+            d[ _cfn[tokenVal] ].call(d,resultVal);
+            Self.data('timeInput').ds = d;
+            return true;
+        } 
+        return false;
+    }
+    function focusNextElement(ele) {
+        var fc = $(":focusable");
+        var current = fc.index(ele);
+        var next = fc.eq(current+1).length ? fc.eq(current+1) : fc.eq(0);
+        setTimeout(function(){next.focus()},0);   
+    }
+    
     var _current = new Date();
     
     var methods = {
@@ -1272,7 +1402,6 @@ function strtodate (str, now) {
          * Handle the element's keypress.
          */
         keydown: function(event) {
-        
             var key = {left: 37, up: 38, right: 39, down: 40, tab:9, enter:13, backspace: 8 };
             var data = $(this).data('timeInput');
             switch(event.which) {
@@ -1308,19 +1437,24 @@ function strtodate (str, now) {
                     break;
                 case(key.enter): 
                     if(data.returnCompletesInput) {
-                        var fc = $(":focusable");
-                        var current = fc.index(data.element);
-                        var next = fc.eq(current+1).length ? fc.eq(current+1) : fc.eq(0);
-                        setTimeout(function(){next.focus()},0);
+                        focusNextElement(data.element);
                     }
                     return false;
+                    break;
+                case(key.backspace):
+                    if(data.currentInput.length)
+                        data.currentInput = data.currentInput.substring(0,-1);
+                    if(data.currentInput.length)
+                        inputCharacter($(this),'');
+                    else
+                        selectToken(data,data.currentToken);
                     break;
                 
             }
             /* okay, so we didn't match the special keys, so it might be a number/letter */
             var code=String.fromCharCode(event.which);
             if(code.match(/[\d\w]/)) {
-                //inputCharacter($(this),code);
+                inputCharacter($(this),code);
             }
             return false;
         },
@@ -1351,12 +1485,21 @@ function strtodate (str, now) {
             } 
             selectToken(data,data.currentToken);
         },
+ 
+        /**
+         * Clean up input and such.
+         */
         blur: function(event) {
             var Self = $(this),
             data = Self.data('timeInput');
             data.currentToken = -1;
             data.clicked=false
+            data.currentInput = null;
         },
+ 
+        /**
+         * Mousedown and mouseup are used to click into a selection.
+         */
         mousedown: function(event) {
             clearSelection();
             $(this).data('timeInput').mouseDown = true;
